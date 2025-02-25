@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  po-translator:
+    build: .
+    volumes:
+      - ./translations:/app/translations
+    working_dir: /app
+    command: ["python", "localization-copy-tool.py"]
