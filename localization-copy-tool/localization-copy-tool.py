@@ -27,7 +27,7 @@ def translate_po_file():
     sheets = pd.read_excel(xlsx_file, sheet_name=None)
     po = polib.pofile(po_file)
 
-    missing_translations = set()  # Store missing sources of .po
+    missing_translations = []  # Store missing sources of .po
 
     for sheet_name, df in sheets.items():
         print(f"Processing sheet: {sheet_name}")
@@ -54,7 +54,7 @@ def translate_po_file():
                     found = True
 
             if not found:
-                missing_translations.add(source_text)
+                missing_translations.append((sheet_name, source_text))
 
     # Save updated .po file
     output_po_file = os.path.join(TRANSLATIONS_DIR, "Game_Translated.po")
@@ -68,9 +68,9 @@ def translate_po_file():
 
         with open(missing_report_file, "w", encoding="utf-8") as file:
             file.write("These entries were detected in the .xlsx BUT they couldn't be found in the .po - It's possible they haven't been added to the game:\n\n")
-            for text in missing_translations:
+            for sheet, text in missing_translations:
                 file.write(f"------------------------\n")
-                file.write(f"Missing Source Text:\n{text}\n")
+                file.write(f"Sheet: {sheet}\nMissing Source Text:\n{text}\n")
                 file.write(f"------------------------\n\n")
 
         print(f"Missing translations report saved to '{missing_report_file}'")
