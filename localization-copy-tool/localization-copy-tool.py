@@ -27,11 +27,12 @@ def translate_po_file():
     sheets = pd.read_excel(xlsx_file, sheet_name=None)
     po = polib.pofile(po_file)
 
-    missing_translations = []  # Store missing sources of .po
+    missing_sources = []  # Store missing sources of .po
+    missing_translations = [] # Store missing translations
 
     for sheet_name, df in sheets.items():
         print(f"Processing sheet: {sheet_name}")
-        df.columns = df.columns.str.strip()  # Clean column names
+        df.columns = df.columns.astype(str).str.strip() # Clean column names
 
         try:
             source_text_index = df.columns.get_loc("Full Text")
@@ -50,30 +51,49 @@ def translate_po_file():
             found = False  # Track if source_text exists in the .po file
             for entry in po:
                 if entry.msgid == source_text:
-                    entry.msgstr = translation_text
                     found = True
+                    if pd.isna(translation_text):
+                        missing_translations.append((sheet_name, source_text))
+                        continue
+                    entry.msgstr = translation_text
 
             if not found:
-                missing_translations.append((sheet_name, source_text))
+                missing_sources.append((sheet_name, source_text))
 
     # Save updated .po file
     output_po_file = os.path.join(TRANSLATIONS_DIR, "Game_Translated.po")
     po.save(output_po_file)
     print(f"Saved updated PO file: {output_po_file}")
 
-    # Generate missing report
-    if missing_translations:
+    # Generate source missing report
+    if missing_sources:
         os.makedirs(REPORTS_DIR, exist_ok=True)  # Ensure reports directory exists
-        missing_report_file = os.path.join(REPORTS_DIR, "missing_report.txt")
+        missing_sources_report_file = os.path.join(REPORTS_DIR, "missing_sources_report.txt")
 
-        with open(missing_report_file, "w", encoding="utf-8") as file:
+        with open(missing_sources_report_file, "w", encoding="utf-8") as file:
             file.write("These entries were detected in the .xlsx BUT they couldn't be found in the .po - It's possible they haven't been added to the game:\n\n")
-            for sheet, text in missing_translations:
+            for sheet, text in missing_sources:
                 file.write(f"------------------------\n")
                 file.write(f"Sheet: {sheet}\nMissing Source Text:\n{text}\n")
                 file.write(f"------------------------\n\n")
 
-        print(f"Missing translations report saved to '{missing_report_file}'")
+        print(f"Missing translations report saved to '{missing_sources_report_file}'")
+    else:
+        print("No missing translations found.")
+
+    # Generate translation missing report
+    if missing_translations:
+        os.makedirs(REPORTS_DIR, exist_ok=True)  # Ensure reports directory exists
+        missing_translations_report_file = os.path.join(REPORTS_DIR, "missing_translations_report.txt")
+
+        with open(missing_translations_report_file, "w", encoding="utf-8") as file:
+            file.write("These entries were detected in the .xlsx AND were found in the .po - BUT their translations are missing:\n\n")
+            for sheet, source_text in missing_translations:
+                file.write(f"------------------------\n")
+                file.write(f"Sheet: {sheet}\nFound Source Text:\n{source_text}\nMissing Translation Text:\nNaN\n")
+                file.write(f"------------------------\n\n")
+
+        print(f"Missing translations report saved to '{missing_translations_report_file}'")
     else:
         print("No missing translations found.")
 
@@ -132,12 +152,29 @@ def detect_duplicate_source_text():
 
     print(f"Duplicate report saved to '{report_filepath}'")
 
+########################################################################################################################################################################################################
+def delete_all_files():
+    """Deletes all files inside the 'reports' and 'translations' directories."""
+    for directory in [REPORTS_DIR, TRANSLATIONS_DIR]:
+        if os.path.exists(directory):
+            for filename in os.listdir(directory):
+                file_path = os.path.join(directory, filename)
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting {file_path}: {e}")
+    
+    print(f"All files inside '{REPORTS_DIR}' and '{TRANSLATIONS_DIR}' have been deleted.")
+
 # --- INTERACTIVE MENU --- ###############################################################################################################################################################
 while True:
     print("\nType a number of the corresponding command, then press Enter to run the command :")
     print("0 - Generate a new Game_Translated.po - By copying translations from a given .xlsx to a given Game.po - Generates a report of missing Source Text in the .po")
     print("1 - Delete All Translations from a given Game.po")
     print("2 - Generate Summary of Duplicates in a Game.po")
+    print("d - Delete ALL files inside 'reports' and 'translations' folders")
+
     print("q - Quit")
 
     choice = input("Enter your choice: ").strip()
@@ -148,6 +185,9 @@ while True:
         delete_all_translations()
     elif choice == "2":
         detect_duplicate_source_text()
+    elif choice.lower() == "d":
+        delete_all_files()
+
     elif choice.lower() == "q":
         print("Exiting...")
         break
