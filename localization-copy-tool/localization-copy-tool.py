@@ -58,7 +58,7 @@ def translate_po_file():
                     entry.msgstr = translation_text
 
             if not found:
-                missing_sources.append((sheet_name, source_text))
+                missing_sources.append((sheet_name, source_text, index+2))
 
     # Save updated .po file
     output_po_file = os.path.join(TRANSLATIONS_DIR, "Game_Translated.po")
@@ -72,9 +72,9 @@ def translate_po_file():
 
         with open(missing_sources_report_file, "w", encoding="utf-8") as file:
             file.write("These entries were detected in the .xlsx BUT they couldn't be found in the .po - It's possible they haven't been added to the game:\n\n")
-            for sheet, text in missing_sources:
+            for sheet, text, index in missing_sources:
                 file.write(f"------------------------\n")
-                file.write(f"Sheet: {sheet}\nMissing Source Text:\n{text}\n")
+                file.write(f"Sheet: {sheet}\nRow (i): {index}\nMissing Source Text:\n{text}\n")
                 file.write(f"------------------------\n\n")
 
         print(f"Missing translations report saved to '{missing_sources_report_file}'")
